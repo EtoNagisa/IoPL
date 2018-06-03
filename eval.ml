@@ -47,4 +47,6 @@ let rec eval_exp env = function
           | _ -> err ("Test expression must be boolean: if"))
 
 let eval_decl env = function
-    Exp e -> let v = eval_exp env e in ("-", env, v)
+    Exp e -> 
+      (try let v = eval_exp env e in ("-", env, v) with
+        Error s -> err(s))
