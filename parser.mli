@@ -7,6 +7,7 @@ type token =
   | SEMISEMI
   | RPAREN
   | PLUS
+  | OR
   | MULT
   | LT
   | LPAREN
@@ -15,6 +16,7 @@ type token =
   | ID of (Syntax.id)
   | FALSE
   | ELSE
+  | AND
 
 (* This exception is raised by the monolithic API functions. *)
 
