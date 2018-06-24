@@ -3,4 +3,10 @@
 *.o
 *.exe
 .*/
+<<<<<<< HEAD
 *.cmo
+=======
+lexer.ml
+parser.ml
+parser.automaton
+>>>>>>> fb982e34069af7bffc837d45b5fee7404817f965
