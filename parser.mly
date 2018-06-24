@@ -21,7 +21,15 @@ Expr :
   | e=LTExpr { e }
 
 LTExpr : 
-    l=PExpr LT r=PExpr { BinOp (Lt, l, r) }
+    l=ORExpr LT r=ORExpr { BinOp (Lt, l, r) }
+  | e=ORExpr { e }
+
+ORExpr :
+    l=ORExpr OR r=ANDExpr { LogOp (OR, l, r) }
+  | e=ANDExpr { e }
+
+ANDExpr :
+    l=ANDExpr AND r=PExpr { LogOp (AND, l, r) }
   | e=PExpr { e }
 
 PExpr :
@@ -30,15 +38,8 @@ PExpr :
 
 MExpr : 
     l=MExpr MULT r=AExpr { BinOp (Mult, l, r) }
-  | e=ORExpr { e }
-  
-ORExpr :
-    l=ANDExpr OR r=ORExpr { BinOp (OR, l, r) }
-  | e=ANDExpr { e }
-
-ANDExpr :
-    l=AExpr AND r=ANDExpr {BinOp (AND, l, r) }
   | e=AExpr { e }
+  
 
 AExpr :
     i=INTV { ILit i }

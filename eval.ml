@@ -1,14 +1,14 @@
 open Syntax 
 
 (* 値の定義 *)
-
-(* exval は式を評価して得られる値．dnval は変数と紐付けられる値．今回
-   の言語ではこの両者は同じになるが，この2つが異なる言語もある．教科書
-   参照． *)
 type exval =
   | IntV of int
   | BoolV of bool
 and dnval = exval
+
+(* exval は式を評価して得られる値．dnval は変数と紐付けられる値．今回
+   の言語ではこの両者は同じになるが，この2つが異なる言語もある．教科書
+   参照． *)
 
 exception Error of string
 
@@ -28,10 +28,8 @@ let rec apply_prim op arg1 arg2 = match op, arg1, arg2 with
   | Mult, _, _ -> err ("Both arguments must be integer: *")
   | Lt, IntV i1, IntV i2 -> BoolV (i1 < i2)
   | Lt, _, _ -> err ("Both arguments must be integer: <")
-  | AND, BoolV b1, BoolV b2 ->BoolV (b1 && b2)
-  | AND, _, _ -> err("Both arguments must be bool: &&")
-  | OR, BoolV b1, BoolV b2 ->BoolV (b1 || b2)
-  | OR, _, _ -> err("Both arguments must be bool: &&")
+
+
 let rec eval_exp env = function
     Var x -> 
       (try Environment.lookup x env with 
@@ -42,7 +40,26 @@ let rec eval_exp env = function
       let arg1 = eval_exp env exp1 in
       let arg2 = eval_exp env exp2 in
       apply_prim op arg1 arg2
-  | IfExp (exp1, exp2, exp3) ->
+  | LogOp (op, exp1, exp2) ->
+      let arg1 = eval_exp env exp1 in
+      (match op, arg1, exp2 with
+        AND, BoolV b1, _ ->
+          if not b1 then BoolV (false) 
+          else 
+            let arg2 = eval_exp env exp2 in
+            (match arg2 with 
+              BoolV b2 -> BoolV (b1 && b2)
+            | _ -> err ("The right argument must be bool: && "))
+      | AND, _, _ -> err("Both arguments must be bool: &&")
+      | OR, BoolV b1, _ ->
+        if b1 then BoolV (true) 
+        else 
+          let arg2 = eval_exp env exp2 in
+            (match arg2 with
+              BoolV b2 -> BoolV (b1 || b2)
+            | _ -> err ("The right argument must be bool: || "))
+      | OR, _, _ -> err("Both arguments must be bool: ||"))
+ | IfExp (exp1, exp2, exp3) ->
       let test = eval_exp env exp1 in
         (match test with
             BoolV true -> eval_exp env exp2 
