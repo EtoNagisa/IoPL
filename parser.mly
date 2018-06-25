@@ -18,18 +18,18 @@ toplevel :
 
 Expr :
     e=IfExpr { e }
-  | e=LTExpr { e }
-
-LTExpr : 
-    l=ORExpr LT r=ORExpr { BinOp (Lt, l, r) }
   | e=ORExpr { e }
 
 ORExpr :
-    l=ORExpr OR r=ANDExpr { LogOp (OR, l, r) }
+    l=ANDExpr OR r=ORExpr { LogOp (Or, l, r) }
   | e=ANDExpr { e }
 
 ANDExpr :
-    l=ANDExpr AND r=PExpr { LogOp (AND, l, r) }
+    l=LTExpr AND r=ANDExpr { LogOp (And, l, r) }
+  | e=LTExpr { e }
+
+LTExpr : 
+    l=PExpr LT r=PExpr { BinOp (Lt, l, r) }
   | e=PExpr { e }
 
 PExpr :

@@ -42,23 +42,21 @@ let rec eval_exp env = function
       apply_prim op arg1 arg2
   | LogOp (op, exp1, exp2) ->
       let arg1 = eval_exp env exp1 in
-      (match op, arg1, exp2 with
-        AND, BoolV b1, _ ->
-          if not b1 then BoolV (false) 
-          else 
-            let arg2 = eval_exp env exp2 in
+      (match op, arg1 with
+        And, BoolV false -> BoolV false
+      | And, BoolV true -> 
+          let arg2 = eval_exp env exp2 in
             (match arg2 with 
-              BoolV b2 -> BoolV (b1 && b2)
+              BoolV b2 -> BoolV b2
             | _ -> err ("The right argument must be bool: && "))
-      | AND, _, _ -> err("Both arguments must be bool: &&")
-      | OR, BoolV b1, _ ->
-        if b1 then BoolV (true) 
-        else 
+      | And, _ -> err("Both arguments must be bool:  &&")
+      | Or, BoolV true -> BoolV true
+      | Or, BoolV false ->
           let arg2 = eval_exp env exp2 in
             (match arg2 with
-              BoolV b2 -> BoolV (b1 || b2)
+              BoolV b2 -> BoolV b2
             | _ -> err ("The right argument must be bool: || "))
-      | OR, _, _ -> err("Both arguments must be bool: ||"))
+      | Or, _ -> err("Both arguments must be bool: ||"))
  | IfExp (exp1, exp2, exp3) ->
       let test = eval_exp env exp1 in
         (match test with

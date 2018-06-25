@@ -6,4 +6,6 @@
 *.cmo
 lexer.ml
 parser.ml
+parser.mli
 parser.automaton
+IoPLMaterials/
