@@ -7,8 +7,9 @@ let reservedWords = [
   ("then", Parser.THEN);
   ("true", Parser.TRUE);
   ("in", Parser.IN);
-  ("let",Parser.LET);
-  ("fun",Parser.FUN);
+  ("let", Parser.LET);
+  ("fun", Parser.FUN);
+  ("rec", Parser.REC);
 ] 
 }
 
