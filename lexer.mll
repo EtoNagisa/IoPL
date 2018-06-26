@@ -6,6 +6,8 @@ let reservedWords = [
   ("if", Parser.IF);
   ("then", Parser.THEN);
   ("true", Parser.TRUE);
+  ("in", Parser.IN);
+  ("let",Parser.LET);
 ] 
 }
 
@@ -23,6 +25,7 @@ rule main = parse
 | "+" { Parser.PLUS }
 | "*" { Parser.MULT }
 | "<" { Parser.LT }
+| "=" { Parser.EQ }
 | "&&" { Parser.AND }
 | "||" {Parser.OR }
 

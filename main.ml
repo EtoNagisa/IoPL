@@ -22,7 +22,11 @@ let rec read_eval_print env =
       print_string s;
       print_newline();
       read_eval_print env
-
+  | _ ->
+      print_string "Parser.MenhirBasics.Error";
+      print_newline();
+      read_eval_print env
+      
 let initial_env = 
   Environment.extend "i" (IntV 1)
     (Environment.extend "v" (IntV 5) 
