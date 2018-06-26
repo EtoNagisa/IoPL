@@ -17,8 +17,11 @@ open Syntax
 
 toplevel :
     e=Expr SEMISEMI { Exp e }
-  | LET x=ID EQ e=Expr SEMISEMI { Decl (x, e) }
+  | e=DECL SEMISEMI { Decl e }
   | LET REC x=ID EQ FUN p=ID RARROW e=Expr SEMISEMI { RecDecl(x, p, e) }
+DECL :
+    LET x=ID EQ e=Expr n=DECL { ((x, e)::n)}
+  |  {[]}
 
 Expr :
     e=IfExpr { e }

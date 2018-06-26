@@ -84,24 +84,64 @@ let rec eval_exp env = function
       dummyenv :=newenv;
       eval_exp newenv exp2
 
-let eval_decl env = function
+let rec exists x = function
+    [] -> false
+  | (id, _) :: rest -> 
+      if id=x then true else exists x rest
+      
+let rec print_distinct = function
+    [] -> ()
+  | (id, v) :: rest ->
+      if exists id rest then  print_distinct rest
+      else (
+        print_string ("val " ^ id ^ " = " ^ string_of_exval v ^ "\n");
+        print_distinct rest
+      )
+let rec eval_decl env = function
+    [] -> (env, [])
+  | (id, e) :: rest ->
+      (try let v = eval_exp env e in
+        let (retenv, reststr) = eval_decl (Environment.extend id v env) rest in
+        (retenv, (id, v)::reststr)
+      with
+        Error s ->
+        print_string s;
+        print_newline();
+        (env, [])
+      )
+      
+let eval_print env = function
     Exp e -> 
-      (try let v = eval_exp env e in ("-", env, v)
+      (try let v = eval_exp env e in 
+        print_string "val - = ";
+        pp_val v;
+        print_newline ();
+        env
       with
-        Error s -> err(s)
+        Error s -> 
+        print_string s;
+        print_newline();
+        env
       )
-  | Decl (id, e) ->
-      (try let v = eval_exp env e in (id, Environment.extend id v env, v)
-      with
-        Error s -> err(s)
-      )
+  | Decl l ->
+      let (newenv,l) = eval_decl env l in
+      print_distinct l;
+      newenv
   | RecDecl (id, para, e) ->
       (try
         let dummyenv = ref Environment.empty in
         let newenv =
           Environment.extend id (ProcV (para, e, dummyenv)) env in
         dummyenv := newenv;
-        (id, newenv, ProcV (para, e, ref newenv))
+        print_string ("val " ^ id ^ " = ");
+        pp_val (ProcV (para, e, dummyenv));
+        print_newline();
+        newenv
       with
-        Error s -> err(s)  
+        Error s -> 
+          print_string s;
+          print_newline();
+          env;
       )
+
+

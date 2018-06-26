@@ -23,5 +23,5 @@ type exp =
 
 type program = 
     Exp of exp
-  | Decl of id * exp
+  | Decl of (id * exp) list
   | RecDecl of id * id * exp
