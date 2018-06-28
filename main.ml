@@ -55,4 +55,11 @@ let initial_env =
                             (Environment.extend "iv" (IntV 4) 
                                  (Environment.empty))))))
 
-let _ = read_eval_print initial_env
+let _ = 
+    if Array.length Sys.argv = 1 then read_eval_print initial_env
+    else 
+        let fname = Sys.argv.(1) in 
+        
+        let fin = open_in fname in
+        let decl = Parser.toplevel Lexer.main (Lexing.from_channel fin) in
+        ignore (eval_print initial_env decl) 
