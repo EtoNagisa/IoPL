@@ -3,10 +3,10 @@ open Syntax
 %}
 
 %token LPAREN RPAREN SEMISEMI
-%token PLUS MULT LT AND OR
+%token PLUS MULT LT LAND LOR
 %token IF THEN ELSE TRUE FALSE
 %token LET IN EQ
-%token RARROW FUN REC
+%token RARROW FUN REC AND
 
 %token <int> INTV
 %token <Syntax.id> ID
@@ -19,10 +19,13 @@ toplevel :
     e=Expr SEMISEMI { Exp e }
   | e=DECL SEMISEMI { Decl e }
   | LET REC x=ID EQ FUN p=ID RARROW e=Expr SEMISEMI { RecDecl(x, p, e) }
-DECL :
-    LET x=ID EQ e=Expr n=DECL { ((x, e)::n)}
-  |  {[]}
 
+DECL :
+    LET x=ID EQ e=Expr n=ANDDECL d=DECL { ((x, e)::n) :: d }  
+  |  {[]}
+ANDDECL :
+    AND x=ID EQ e=Expr n=ANDDECL { (x, e)::n }
+  | {[]}
 Expr :
     e=IfExpr { e }
   | e=LetExpr { e }
@@ -31,11 +34,11 @@ Expr :
   | e=FunExpr { e }
 
 ORExpr :
-    l=ANDExpr OR r=ORExpr { LogOp (Or, l, r) }
+    l=ANDExpr LOR r=ORExpr { LogOp (Or, l, r) }
   | e=ANDExpr { e }
 
 ANDExpr :
-    l=LTExpr AND r=ANDExpr { LogOp (And, l, r) }
+    l=LTExpr LAND r=ANDExpr { LogOp (And, l, r) }
   | e=LTExpr { e }
 
 LTExpr : 
@@ -65,7 +68,7 @@ IfExpr :
     IF c=Expr THEN t=Expr ELSE e=Expr { IfExp (c, t, e) }
 
 LetExpr :
-    LET x=ID EQ e1=Expr IN e2=Expr { LetExp (x, e1, e2) }
+    LET x=ID EQ e=Expr n=ANDDECL IN ex=Expr { LetExp ((x, e)::n, ex) }
 
 LetRecExpr :
     LET REC x=ID EQ FUN p=ID RARROW e1=Expr IN e2=Expr {LetRecExp (x, p, e1, e2) }

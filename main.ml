@@ -9,6 +9,7 @@ let string_of_binop = function
 let string_of_logop = function
       And -> "And"
     | Or -> "Or"
+
 let rec string_of_exp =function
       Var x -> x
     | ILit i -> string_of_int i
@@ -19,20 +20,21 @@ let rec string_of_exp =function
         "LogOp (" ^ string_of_logop op ^ ", " ^ string_of_exp exp1 ^ ", " ^ string_of_exp exp2 ^ ")"    
     | IfExp  (exp1, exp2, exp3) ->
         "IfOp ("^ string_of_exp exp1 ^ "," ^ string_of_exp exp2 ^", " ^ string_of_exp exp3 ^ ")"
-    | LetExp  (id, exp1, exp2) ->
-        "LetOp (" ^ id ^ ", " ^ string_of_exp exp1 ^ ", " ^ string_of_exp exp2 ^ ")"  
+    | LetExp  ((id, e) :: rest, _) ->
+        "LetOp (" ^ id ^ "=" ^ string_of_exp e ^ ", "  
+    | LetExp ([],exp) -> string_of_exp exp ^ ")\n"
     | LetRecExp (id, para,exp1, exp2) ->
         "LetOp (" ^ id ^ ", " ^ para ^ ", " ^ string_of_exp exp1 ^ ", " ^ string_of_exp exp2 ^ ")"  
     | FunExp  (id, exp1) ->
         "FunOp (" ^ id ^ ", " ^ string_of_exp exp1 ^ ")"
     | AppExp  (exp1, exp2) ->
         "AppOp (" ^ (string_of_exp exp1) ^ ", " ^ string_of_exp exp2 ^ ")"
-let rec string_of_program = function
+and string_of_program = function
       Exp e -> (string_of_exp e) ^ "\n"
-    | Decl ((id, exp) :: rest) ->
-        id ^ "=" ^ string_of_exp exp ^ "\n" ^ string_of_program (Decl rest)
-    | Decl _ -> 
-        ""
+    | Decl [] -> ""
+    | Decl ([] :: rest) -> string_of_program (Decl rest)
+    | Decl (((id,exp)::rem) :: rest) ->
+        id ^ "=" ^ string_of_exp exp ^ "\n" ^ string_of_program (Decl (rem::rest))
     | RecDecl (id, para, exp) ->
         id ^ "=" ^ para ^ "->" ^ string_of_exp exp ^ "\n"
 

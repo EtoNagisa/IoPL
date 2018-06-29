@@ -10,6 +10,7 @@ let reservedWords = [
   ("let", Parser.LET);
   ("fun", Parser.FUN);
   ("rec", Parser.REC);
+  ("and", Parser.AND);
 ] 
 }
 
@@ -28,8 +29,8 @@ rule main = parse
 | "*" { Parser.MULT }
 | "<" { Parser.LT }
 | "=" { Parser.EQ }
-| "&&" { Parser.AND }
-| "||" {Parser.OR }
+| "&&" { Parser.LAND }
+| "||" {Parser.LOR }
 | "->" {Parser.RARROW}
 
 | ['a'-'z'] ['a'-'z' '0'-'9' '_' '\'']*

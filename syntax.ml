@@ -16,12 +16,12 @@ type exp =
              ILit 3, 
              Var "x") --> 
        if x<4 then 3 else x *)
-    | LetExp of id * exp * exp
+    | LetExp of (id * exp) list  * exp
     | FunExp of id * exp
     | AppExp of exp * exp
     | LetRecExp of id * id * exp * exp
 
-type program = 
+and program = 
       Exp of exp
-    | Decl of (id * exp) list
+    | Decl of (id * exp) list list
     | RecDecl of id * id * exp
