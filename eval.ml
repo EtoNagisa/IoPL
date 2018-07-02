@@ -21,6 +21,7 @@ let rec string_of_exval = function
       IntV i -> string_of_int i
     | BoolV b -> string_of_bool b
     | ProcV _ -> "<fun>"
+    | DProcV _ -> "<fun>"
 
 let pp_val v = print_string (string_of_exval v)
 
@@ -88,8 +89,6 @@ let rec eval_exp env = function
     | LetExp (l, exp) ->
         let (newenv, _) = eval_decls env [l] in
         eval_exp newenv exp
-    | LetExp _ ->
-        err ("non-decl program is used in LetExp")
     | FunExp (id, exp) -> ProcV(id, exp, ref env)
     | DFunExp (id, exp) -> DProcV(id, exp)
     | AppExp (exp1, exp2) ->
