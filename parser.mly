@@ -22,9 +22,11 @@ toplevel :
 
 DECL :
     LET x=ID EQ e=Expr n=ANDDECL d=DECL { ((x, e)::n) :: d }  
+  | LET x=ID e=EQFun n=ANDDECL d=DECL { ((x, e)::n) :: d }
   |  {[]}
 ANDDECL :
     AND x=ID EQ e=Expr n=ANDDECL { (x, e)::n }
+  | AND x=ID e=EQFun n=ANDDECL { (x, e)::n }
   | {[]}
 Expr :
     e=IfExpr { e }
@@ -69,9 +71,18 @@ IfExpr :
 
 LetExpr :
     LET x=ID EQ e=Expr n=ANDDECL IN ex=Expr { LetExp ((x, e)::n, ex) }
+  | LET x=ID e=EQFun n=ANDDECL IN ex=Expr { LetExp((x, e)::n, ex) }
 
 LetRecExpr :
     LET REC x=ID EQ FUN p=ID RARROW e1=Expr IN e2=Expr {LetRecExp (x, p, e1, e2) }
 
 FunExpr :
-    FUN x=ID RARROW e=Expr { FunExp (x, e) }
+    FUN e=ARFun { e }
+
+EQFun :
+    x=ID e=EQFun { FunExp (x, e) }
+  | x=ID EQ e=Expr { FunExp (x, e) }
+
+ARFun :
+    x=ID e=ARFun { FunExp (x, e) }
+  | x=ID RARROW e=Expr { FunExp (x, e) }
