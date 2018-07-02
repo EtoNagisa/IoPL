@@ -6,7 +6,7 @@ open Syntax
 %token PLUS MULT LT LAND LOR
 %token IF THEN ELSE TRUE FALSE
 %token LET IN EQ
-%token RARROW FUN REC AND
+%token RARROW FUN REC AND DFUN
 
 %token <int> INTV
 %token <Syntax.id> ID
@@ -34,6 +34,7 @@ Expr :
   | e=LetRecExpr { e }
   | e=ORExpr { e }
   | e=FunExpr { e }
+  | e=DFunExpr { e }
 
 ORExpr :
     l=ANDExpr LOR r=ORExpr { LogOp (Or, l, r) }
@@ -79,6 +80,9 @@ LetRecExpr :
 FunExpr :
     FUN e=ARFun { e }
 
+DFunExpr :
+    DFUN e=DARFun { e }
+
 EQFun :
     x=ID e=EQFun { FunExp (x, e) }
   | x=ID EQ e=Expr { FunExp (x, e) }
@@ -86,3 +90,8 @@ EQFun :
 ARFun :
     x=ID e=ARFun { FunExp (x, e) }
   | x=ID RARROW e=Expr { FunExp (x, e) }
+
+DARFun :
+    x=ID e=DARFun { DFunExp (x, e) }
+  | x=ID RARROW e=Expr { DFunExp (x, e) }
+    

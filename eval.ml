@@ -5,6 +5,7 @@ type exval =
     | IntV of int
     | BoolV of bool
     | ProcV of id * exp * dnval Environment.t ref
+    | DProcV of id * exp 
 and dnval = exval
 
 (* exval は式を評価して得られる値．dnval は変数と紐付けられる値．今回
@@ -90,14 +91,19 @@ let rec eval_exp env = function
     | LetExp _ ->
         err ("non-decl program is used in LetExp")
     | FunExp (id, exp) -> ProcV(id, exp, ref env)
+    | DFunExp (id, exp) -> DProcV(id, exp)
     | AppExp (exp1, exp2) ->
         let funval = eval_exp env exp1 in
         let arg = eval_exp env exp2 in
         (match funval with
-           ProcV (id, body, env') ->
-             let newenv = Environment.extend id arg !env' in
+          
+        ProcV (id, body, env') ->
+            let newenv = Environment.extend id arg !env' in
              eval_exp newenv body
-         | _ -> err ("Non-function value is applied"))
+        | DProcV (id, body) ->
+            let newenv = Environment.extend id arg env in
+                eval_exp newenv body
+        | _ -> err ("Non-function value is applied"))
     | LetRecExp  (id, para, exp1, exp2) ->
         let dummyenv = ref Environment.empty in
         let newenv = 

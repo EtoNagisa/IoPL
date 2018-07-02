@@ -25,8 +25,10 @@ let rec string_of_exp =function
     | LetExp ([],exp) -> string_of_exp exp ^ ")\n"
     | LetRecExp (id, para,exp1, exp2) ->
         "LetOp (" ^ id ^ ", " ^ para ^ ", " ^ string_of_exp exp1 ^ ", " ^ string_of_exp exp2 ^ ")"  
-    | FunExp  (id, exp1) ->
-        "FunOp (" ^ id ^ ", " ^ string_of_exp exp1 ^ ")"
+    | FunExp  (id, exp) ->
+        "FunOp (" ^ id ^ ", " ^ string_of_exp exp ^ ")"
+    | DFunExp  (id, exp) ->
+        "DFunOp (" ^ id ^ ", " ^ string_of_exp exp ^ ")"
     | AppExp  (exp1, exp2) ->
         "AppOp (" ^ (string_of_exp exp1) ^ ", " ^ string_of_exp exp2 ^ ")"
 and string_of_program = function

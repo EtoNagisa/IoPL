@@ -18,6 +18,7 @@ type exp =
        if x<4 then 3 else x *)
     | LetExp of (id * exp) list  * exp
     | FunExp of id * exp
+    | DFunExp of id * exp
     | AppExp of exp * exp
     | LetRecExp of id * id * exp * exp
 
