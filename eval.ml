@@ -87,8 +87,13 @@ let rec eval_exp env = function
          | BoolV false -> eval_exp env exp3
          | _ -> err ("Test expression must be boolean: if"))
     | LetExp (l, exp) ->
-        let (newenv, _) = eval_decls env [l] in
-        eval_exp newenv exp
+        (match l with 
+            Let li ->
+                let (newenv, _) = eval_decls env [l] in
+                eval_exp newenv exp
+        |   Letrec li ->
+                let (newenv, _) = eval_decls env [l] in
+                eval_exp newenv exp)
     | FunExp (id, exp) -> ProcV(id, exp, ref env)
     | DFunExp (id, exp) -> DProcV(id, exp)
     | AppExp (exp1, exp2) ->
@@ -103,12 +108,6 @@ let rec eval_exp env = function
             let newenv = Environment.extend id arg env in
                 eval_exp newenv body
         | _ -> err ("Non-function value is applied"))
-    | LetRecExp  (id, para, exp1, exp2) ->
-        let dummyenv = ref Environment.empty in
-        let newenv = 
-            Environment.extend id (ProcV (para, exp1, dummyenv)) env in
-        dummyenv :=newenv;
-        eval_exp newenv exp2
 
 and eval_decl env renv = function
       [] -> (renv, [])
@@ -117,13 +116,32 @@ and eval_decl env renv = function
         let (retenv, reststr) = eval_decl env (Environment.extend id v renv) rest in
         if consistent ((id,v)::reststr) then (retenv, (id, v)::reststr)
         else err ("variable " ^ id ^ " is bound several times")
+and eval_rec_decl env l = 
+    let dummyenv = ref Environment.empty in
+    let rec f env = function
+      [] -> (env, [])
+    | (id, FunExp(x, e)) :: rest ->
+       
+        let v = ProcV (x, e, dummyenv) in
+        let newenv = Environment.extend id v env in 
+        let (retenv,reststr) = f (Environment.extend id v newenv) rest in
+        if consistent ((id,v)::reststr) then (retenv, (id, v)::reststr)
+        else err ("variable " ^ id ^ " is bound several times")
+    | _ -> err ("only function can be decelared") in
+    let (retenv,retstr) = f env l in
+    dummyenv := retenv;
+    (retenv,retstr)
 
 and eval_decls env = function
       [] -> (env,[])
-    | l :: rest ->
+    | (Let l ):: rest ->
         let (newenv,str) = eval_decl env env l in
         let (retenv,retstr) = eval_decls newenv rest
         in (retenv,str@retstr)
+    | (Letrec l) :: rest ->
+        let (newenv,str) = eval_rec_decl env l in
+        let (retenv,retstr) = eval_decls newenv rest
+        in (retenv,str@retstr)            
 
 let eval_print env = function
       Exp e -> 
@@ -149,20 +167,5 @@ let eval_print env = function
             print_newline();
             env
         )
-    | RecDecl (id, para, e) ->
-        (try
-             let dummyenv = ref Environment.empty in
-             let newenv =
-                 Environment.extend id (ProcV (para, e, dummyenv)) env in
-             dummyenv := newenv;
-             print_string ("val " ^ id ^ " = ");
-             pp_val (ProcV (para, e, dummyenv));
-             print_newline();
-             newenv
-         with
-           Error s -> 
-             print_string s;
-             print_newline();
-             env;
-        )
+    
 

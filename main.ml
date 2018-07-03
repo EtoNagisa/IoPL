@@ -9,7 +9,7 @@ let string_of_binop = function
 let string_of_logop = function
       And -> "And"
     | Or -> "Or"
-
+(*
 let rec string_of_exp =function
       Var x -> x
     | ILit i -> string_of_int i
@@ -31,6 +31,7 @@ let rec string_of_exp =function
         "DFunOp (" ^ id ^ ", " ^ string_of_exp exp ^ ")"
     | AppExp  (exp1, exp2) ->
         "AppOp (" ^ (string_of_exp exp1) ^ ", " ^ string_of_exp exp2 ^ ")"
+        
 and string_of_program = function
       Exp e -> (string_of_exp e) ^ "\n"
     | Decl [] -> ""
@@ -39,7 +40,7 @@ and string_of_program = function
         id ^ "=" ^ string_of_exp exp ^ "\n" ^ string_of_program (Decl (rem::rest))
     | RecDecl (id, para, exp) ->
         id ^ "=" ^ para ^ "->" ^ string_of_exp exp ^ "\n"
-
+*)
 let rec read_eval_print env =
     print_string "# ";
     flush stdout;

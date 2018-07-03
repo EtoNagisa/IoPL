@@ -18,12 +18,15 @@ open Syntax
 toplevel :
     e=Expr SEMISEMI { Exp e }
   | e=DECL SEMISEMI { Decl e }
-  | LET REC x=ID EQ FUN p=ID RARROW e=Expr SEMISEMI { RecDecl(x, p, e) }
+
 
 DECL :
-    LET x=ID EQ e=Expr n=ANDDECL d=DECL { ((x, e)::n) :: d }  
-  | LET x=ID e=EQFun n=ANDDECL d=DECL { ((x, e)::n) :: d }
+    LET x=ID EQ e=Expr n=ANDDECL d=DECL { Let ((x, e) :: n) :: d }  
+  | LET x=ID e=EQFun n=ANDDECL d=DECL { Let ((x, e) :: n) :: d }
+  | LET REC x=ID e=EQFun n=ANDDECL d=DECL { Letrec((x, e) :: n) :: d }
+  | LET REC x=ID EQ e=FunExpr n=ANDDECL d=DECL { Letrec((x, e) :: n) :: d }
   |  {[]}
+
 ANDDECL :
     AND x=ID EQ e=Expr n=ANDDECL { (x, e)::n }
   | AND x=ID e=EQFun n=ANDDECL { (x, e)::n }
@@ -31,10 +34,8 @@ ANDDECL :
 Expr :
     e=IfExpr { e }
   | e=LetExpr { e }
-  | e=LetRecExpr { e }
   | e=ORExpr { e }
   | e=FunExpr { e }
-  | e=DFunExpr { e }
 
 ORExpr :
     l=ANDExpr LOR r=ORExpr { LogOp (Or, l, r) }
@@ -71,17 +72,14 @@ IfExpr :
     IF c=Expr THEN t=Expr ELSE e=Expr { IfExp (c, t, e) }
 
 LetExpr :
-    LET x=ID EQ e=Expr n=ANDDECL IN ex=Expr { LetExp ((x, e)::n, ex) }
-  | LET x=ID e=EQFun n=ANDDECL IN ex=Expr { LetExp((x, e)::n, ex) }
-
-LetRecExpr :
-    LET REC x=ID EQ FUN p=ID RARROW e1=Expr IN e2=Expr {LetRecExp (x, p, e1, e2) }
+    LET x=ID EQ e=Expr n=ANDDECL IN ex=Expr { LetExp (Let ((x, e)::n), ex) }
+  | LET x=ID e=EQFun n=ANDDECL IN ex=Expr { LetExp(Let ((x, e)::n), ex) }
+  | LET REC x=ID e=EQFun n=ANDDECL IN ex=Expr { LetExp (Letrec ((x, e)::n), ex) }
+  | LET REC x=ID EQ e=FunExpr n=ANDDECL IN ex=Expr { LetExp (Letrec ((x, e)::n), ex) }
 
 FunExpr :
     FUN e=ARFun { e }
-
-DFunExpr :
-    DFUN e=DARFun { e }
+  | DFUN e=DARFun { e }
 
 EQFun :
     x=ID e=EQFun { FunExp (x, e) }

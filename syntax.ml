@@ -3,7 +3,9 @@ type id = string
 
 type binOp = Plus | Mult | Lt 
 type logOp = And | Or
-type exp =
+
+type letseq = Let of (id * exp) list | Letrec of (id * exp) list
+and exp =
     | Var of id (* Var "x" --> x *)
     | ILit of int (* ILit 3 --> 3 *)
     | BLit of bool (* BLit true --> true *)
@@ -16,13 +18,11 @@ type exp =
              ILit 3, 
              Var "x") --> 
        if x<4 then 3 else x *)
-    | LetExp of (id * exp) list  * exp
+    | LetExp of letseq * exp
     | FunExp of id * exp
     | DFunExp of id * exp
     | AppExp of exp * exp
-    | LetRecExp of id * id * exp * exp
 
 and program = 
       Exp of exp
-    | Decl of (id * exp) list list
-    | RecDecl of id * id * exp
+    | Decl of letseq list
