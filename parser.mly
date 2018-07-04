@@ -17,19 +17,19 @@ open Syntax
 
 toplevel :
     e=Expr SEMISEMI { Exp e }
-  | e=DECL SEMISEMI { Decl e }
+  | e=Decl SEMISEMI { Decl e }
 
 
-DECL :
-    LET x=NAME EQ e=Expr n=ANDDECL d=DECL { Let ((x, e) :: n) :: d }  
-  | LET x=NAME e=EQFun n=ANDDECL d=DECL { Let ((x, e) :: n) :: d }
-  | LET REC x=NAME e=EQFun n=ANDDECL d=DECL { Letrec((x, e) :: n) :: d }
-  | LET REC x=NAME EQ e=FunExpr n=ANDDECL d=DECL { Letrec((x, e) :: n) :: d }
+Decl :
+    LET x=Name EQ e=Expr n=AndDecl d=Decl { Let ((x, e) :: n) :: d }  
+  | LET x=Name e=EQFun n=AndDecl d=Decl { Let ((x, e) :: n) :: d }
+  | LET REC x=Name e=EQFun n=AndDecl d=Decl { Letrec((x, e) :: n) :: d }
+  | LET REC x=Name EQ e=FunExpr n=AndDecl d=Decl { Letrec((x, e) :: n) :: d }
   |  {[]}
 
-ANDDECL :
-    AND x=NAME EQ e=Expr n=ANDDECL { (x, e)::n }
-  | AND x=NAME e=EQFun n=ANDDECL { (x, e)::n }
+AndDecl :
+    AND x=Name EQ e=Expr n=AndDecl { (x, e)::n }
+  | AND x=Name e=EQFun n=AndDecl { (x, e)::n }
   | {[]}
 Expr :
     e=IfExpr { e }
@@ -65,10 +65,10 @@ AExpr :
     i=INTV { ILit i }
   | TRUE   { BLit true }
   | FALSE  { BLit false }
-  | i=NAME   { Var i }
+  | i=Name   { Var i }
   | LPAREN e=Expr RPAREN { e }
 
-NAME :
+Name :
     LPAREN PLUS RPAREN { "( + )" }
   | LPAREN MULT RPAREN { "( * )" }
   | LPAREN LT RPAREN { "( < )" }
@@ -80,24 +80,24 @@ IfExpr :
     IF c=Expr THEN t=Expr ELSE e=Expr { IfExp (c, t, e) }
 
 LetExpr :
-    LET x=NAME EQ e=Expr n=ANDDECL IN ex=Expr { LetExp (Let ((x, e)::n), ex) }
-  | LET x=NAME e=EQFun n=ANDDECL IN ex=Expr { LetExp(Let ((x, e)::n), ex) }
-  | LET REC x=NAME e=EQFun n=ANDDECL IN ex=Expr { LetExp (Letrec ((x, e)::n), ex) }
-  | LET REC x=NAME EQ e=FunExpr n=ANDDECL IN ex=Expr { LetExp (Letrec ((x, e)::n), ex) }
+    LET x=Name EQ e=Expr n=AndDecl IN ex=Expr { LetExp (Let ((x, e)::n), ex) }
+  | LET x=Name e=EQFun n=AndDecl IN ex=Expr { LetExp(Let ((x, e)::n), ex) }
+  | LET REC x=Name e=EQFun n=AndDecl IN ex=Expr { LetExp (Letrec ((x, e)::n), ex) }
+  | LET REC x=Name EQ e=FunExpr n=AndDecl IN ex=Expr { LetExp (Letrec ((x, e)::n), ex) }
 
 FunExpr :
     FUN e=ARFun { e }
   | DFUN e=DARFun { e }
 
 EQFun :
-    x=NAME e=EQFun { FunExp (x, e) }
-  | x=NAME EQ e=Expr { FunExp (x, e) }
+    x=Name e=EQFun { FunExp (x, e) }
+  | x=Name EQ e=Expr { FunExp (x, e) }
 
 ARFun :
-    x=NAME e=ARFun { FunExp (x, e) }
-  | x=NAME RARROW e=Expr { FunExp (x, e) }
+    x=Name e=ARFun { FunExp (x, e) }
+  | x=Name RARROW e=Expr { FunExp (x, e) }
 
 DARFun :
-    x=NAME e=DARFun { DFunExp (x, e) }
-  | x=NAME RARROW e=Expr { DFunExp (x, e) }
+    x=Name e=DARFun { DFunExp (x, e) }
+  | x=Name RARROW e=Expr { DFunExp (x, e) }
     
