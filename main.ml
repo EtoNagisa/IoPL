@@ -1,14 +1,14 @@
 open Syntax
 open Eval
 let string_of_binop = function
-      Plus -> "Plus"
-    | Lt -> "Lt"
-    | Mult -> "Mult"
+    Plus -> "Plus"
+|   Lt -> "Lt"
+|   Mult -> "Mult"
 
 
 let string_of_logop = function
-      And -> "And"
-    | Or -> "Or"
+    And -> "And"
+|   Or -> "Or"
 (*
 let rec string_of_exp =function
       Var x -> x
@@ -44,11 +44,24 @@ and string_of_program = function
 let rec read_eval_print env =
     print_string "# ";
     flush stdout;
-    let decl = Parser.toplevel Lexer.main (Lexing.from_channel stdin) in
-    (*print_string (string_of_program decl);*)
-    let newenv = eval_print env decl in
-
-    read_eval_print newenv
+    try
+        let decl = Parser.toplevel Lexer.main (Lexing.from_channel stdin) in
+        (*print_string (string_of_program decl);*)
+        let newenv = eval_print env decl in
+        read_eval_print newenv
+    with
+        Error s ->
+            print_string s;
+            print_newline();
+            read_eval_print env
+    |   Failure s ->
+            print_string s;
+            print_newline();
+            read_eval_print env
+    |   _ ->
+            print_string "an error has occured while parsing";
+            print_newline();
+            read_eval_print env
 
 
 let initial_env = 
@@ -60,6 +73,7 @@ let initial_env =
                             (Environment.extend "iv" (IntV 4) 
                                  (Environment.empty))))))
 
+                        
 let _ = 
     if Array.length Sys.argv = 1 then read_eval_print initial_env
     else 
