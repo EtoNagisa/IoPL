@@ -65,13 +65,12 @@ let rec read_eval_print env =
 
 
 let initial_env = 
-    Environment.extend "i" (IntV 1)
-        (Environment.extend "v" (IntV 5) 
-             (Environment.extend "x" (IntV 10)
-                  (Environment.extend "ii" (IntV 2)
-                       (Environment.extend "iii" (IntV 3)
-                            (Environment.extend "iv" (IntV 4) 
-                                 (Environment.empty))))))
+    Environment.extend "( + )" (ProcV ("x", FunExp ("y",BinOp (Plus, Var "x", Var "y")), ref Environment.empty)) 
+        (Environment.extend "( * )" (ProcV ("x", FunExp ("y",BinOp (Mult, Var "x", Var "y")), ref Environment.empty)) 
+            (Environment.extend "( + )" (ProcV ("x", FunExp ("y",BinOp (Lt, Var "x", Var "y")), ref Environment.empty)) 
+                (Environment.extend "( && )" (ProcV ("x", FunExp ("y",LogOp (And, Var "x", Var "y")), ref Environment.empty)) 
+                    (Environment.extend "( || )" (ProcV ("x", FunExp ("y",LogOp (Or, Var "x", Var "y")), ref Environment.empty)) 
+                        Environment.empty))))
 
                         
 let _ = 

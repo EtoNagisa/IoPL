@@ -39,10 +39,10 @@ let rec print_distinct = function
     [] -> ()
 |   (id, v) :: rest ->
         if exists id rest then  print_distinct rest
-        else
+        else (
             print_string ("val " ^ id ^ " = " ^ string_of_exval v ^ "\n");
             print_distinct rest
-        
+        )
 
 let rec apply_prim op arg1 arg2 = match op, arg1, arg2 with
     Plus, IntV i1, IntV i2 -> IntV (i1 + i2)
@@ -121,7 +121,6 @@ and eval_rec_decl env l =
     let rec f env = function
         [] -> (env, [])
     |   (id, FunExp(x, e)) :: rest ->
-       
             let v = ProcV (x, e, dummyenv) in
             let newenv = Environment.extend id v env in 
             let (retenv,reststr) = f (Environment.extend id v newenv) rest in
