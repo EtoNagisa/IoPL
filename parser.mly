@@ -38,11 +38,11 @@ Expr :
   | e=FunExpr { e }
 
 ORExpr :
-    l=ANDExpr LOR r=ORExpr { LogOp (Or, l, r) }
+    l=ANDExpr LOR r=ORExpr { BinOp (Or, l, r) }
   | e=ANDExpr { e }
 
 ANDExpr :
-    l=LTExpr LAND r=ANDExpr { LogOp (And, l, r) }
+    l=LTExpr LAND r=ANDExpr { BinOp (And, l, r) }
   | e=LTExpr { e }
 
 LTExpr : 

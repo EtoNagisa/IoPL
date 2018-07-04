@@ -44,42 +44,47 @@ let rec print_distinct = function
             print_distinct rest
         )
 
-let rec apply_prim op arg1 arg2 = match op, arg1, arg2 with
-    Plus, IntV i1, IntV i2 -> IntV (i1 + i2)
-|   Plus, _, _ -> err ("Both arguments must be integer: +")
-|   Mult, IntV i1, IntV i2 -> IntV (i1 * i2)
-|   Mult, _, _ -> err ("Both arguments must be integer: *")
-|   Lt, IntV i1, IntV i2 -> BoolV (i1 < i2)
-|   Lt, _, _ -> err ("Both arguments must be integer: <")
+let rec apply_prim env op arg1 arg2 = match op, arg1, arg2 with
+    And, _, _ ->
+        let e1 = eval_exp env arg1 in
+        (match e1 with
+            BoolV false -> BoolV false
+        |   BoolV true ->
+                let e2 = eval_exp env arg2 in
+                (match e2 with
+                    BoolV b1 -> BoolV b1
+                |   _ -> err ("The right argument must be bool: && "))
+        |   _ -> err("Both arguments must be bool:  &&"))
+|   Or, _, _ ->
+        let e1 = eval_exp env arg1 in
+        (match e1 with
+            BoolV true -> BoolV true
+        |   BoolV false ->
+                let e2 = eval_exp env arg2 in
+                (match e2 with
+                    BoolV b1 -> BoolV b1
+                |   _ -> err ("The right argument must be bool: || "))
+        |   _ -> err("Both arguments must be bool:  ||"))
+|   _ ->
+        let e1 = eval_exp env arg1 in
+        let e2 = eval_exp env arg2 in
+        
+        match op, e1, e2 with
+            Plus, IntV i1, IntV i2 -> IntV (i1 + i2)
+        |   Plus, _, _ -> err ("Both arguments must be integer: +")
+        |   Mult, IntV i1, IntV i2 -> IntV (i1 * i2)
+        |   Mult, _, _ -> err ("Both arguments must be integer: *")
+        |   Lt, IntV i1, IntV i2 -> BoolV (i1 < i2)
+        |   Lt, _, _ -> err ("Both arguments must be integer: <")
 
-
-let rec eval_exp env = function
+and eval_exp env = function
     Var x -> 
         (try Environment.lookup x env with 
            Environment.Not_bound -> err ("Variable not bound: " ^ x))
 |   ILit i -> IntV i
 |   BLit b -> BoolV b
 |   BinOp (op, exp1, exp2) -> 
-        let arg1 = eval_exp env exp1 in
-        let arg2 = eval_exp env exp2 in
-        apply_prim op arg1 arg2
-|   LogOp (op, exp1, exp2) ->
-        let arg1 = eval_exp env exp1 in
-        (match op, arg1 with
-            And, BoolV false -> BoolV false
-        |   And, BoolV true -> 
-                let arg2 = eval_exp env exp2 in
-                (match arg2 with 
-                    BoolV b2 -> BoolV b2
-                |   _ -> err ("The right argument must be bool: && "))
-        |   And, _ -> err("Both arguments must be bool:  &&")
-        |   Or, BoolV true -> BoolV true
-        |   Or, BoolV false ->
-                let arg2 = eval_exp env exp2 in
-                (match arg2 with
-                    BoolV b2 -> BoolV b2
-                |   _ -> err ("The right argument must be bool: || "))
-        |   Or, _ -> err("Both arguments must be bool: ||"))
+        apply_prim env op exp1 exp2
 |   IfExp (exp1, exp2, exp3) ->
         let test = eval_exp env exp1 in
         (match test with
