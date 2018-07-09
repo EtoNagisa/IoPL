@@ -22,7 +22,6 @@ let rec read_eval_print env =
             print_newline();
             read_eval_print env
 
-
 let initial_env = 
     Environment.extend "( + )" (ProcV ("x", FunExp ("y", BinOp (Plus, Var "x", Var "y")), ref Environment.empty)) 
         (Environment.extend "( * )" (ProcV ("x", FunExp ("y", BinOp (Mult, Var "x", Var "y")), ref Environment.empty)) 
@@ -31,12 +30,28 @@ let initial_env =
                     (Environment.extend "( || )" (ProcV ("x", FunExp ("y", BinOp (Or, Var "x", Var "y")), ref Environment.empty)) 
                         Environment.empty))))
 
+let batch_interpreter () =
+    let fname = Sys.argv.(1) in 
+        try
+            let fin = open_in fname in
+            let decl = Parser.toplevel Lexer.main (Lexing.from_channel fin) in
+            ignore(eval_print initial_env decl);
+            close_in fin
+        with   
+            Error s ->
+                print_string s;
+                print_newline()
+        |   Failure s ->
+                print_string s;
+                print_newline()
+        |   Sys_error s ->
+                print_string s;
+                print_newline()
+        |   _ ->
+                print_string "an error has occured while parsing";
+                print_newline()
+
                         
 let _ = 
     if Array.length Sys.argv = 1 then read_eval_print initial_env
-    else 
-        let fname = Sys.argv.(1) in 
-        
-        let fin = open_in fname in
-        let decl = Parser.toplevel Lexer.main (Lexing.from_channel fin) in
-        ignore (eval_print initial_env decl) 
+    else batch_interpreter ()

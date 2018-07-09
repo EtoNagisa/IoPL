@@ -9,3 +9,4 @@ parser.ml
 parser.mli
 parser.automaton
 IoPLMaterials/
+*.pdf
