@@ -35,15 +35,15 @@ let rec consistent = function
 |   (id, _) :: rest ->
         if exists id rest then false else consistent rest  
 
-let rec print_distinct = function
-    [] -> ()
-|   (id, v) :: rest ->
-        if exists id rest then  print_distinct rest
+let rec distinct l ty =
+    match l,ty with
+        ([], []) -> ([], [])
+    |   ((id, v) :: restl,t :: restty) ->
+        if exists id restl then distinct restl restty
         else (
-            print_string ("val " ^ id ^ " = " ^ string_of_exval v ^ "\n");
-            print_distinct rest
+            let (a,b) = distinct restl restty in
+            ((id, v ):: a, t::b)
         )
-
 let rec apply_prim env op arg1 arg2 = match op, arg1, arg2 with
     And, _, _ ->
         let e1 = eval_exp env arg1 in
@@ -150,16 +150,11 @@ and eval_decls env = function
         let (retenv,retstr) = eval_decls newenv rest
         in (retenv,str@retstr)            
 
-let eval_print env = function
+let eval env = function
     Exp e -> 
         let v = eval_exp env e in 
-        print_string "val - = ";
-        pp_val v;
-        print_newline ();
-        env
+        (env, ["-", v])
 |   Decl d ->
-        let (newenv,l) = eval_decls env d in
-        print_distinct l;
-        newenv
+        eval_decls env d
         
 

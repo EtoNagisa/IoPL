@@ -1,6 +1,11 @@
 (* ML interpreter / type reconstruction *)
 type id = string
 
+type ty = 
+    TyInt
+|   TyBool
+
+
 type binOp = Plus | Mult | Lt | And | Or
 
 type letseq = Let of (id * exp) list | Letrec of (id * exp) list

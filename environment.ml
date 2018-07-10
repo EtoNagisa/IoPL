@@ -10,6 +10,7 @@ let rec lookup x env =
 
 let rec map f = function
       [] -> []
+    
     | (id, v)::rest -> (id, f v) :: map f rest
 
 let rec fold_right f env a = 
