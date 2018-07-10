@@ -4,9 +4,24 @@ let err s = raise (Error s)
 
 type tyenv = ty Environment.t
 
-let pp_ty = function
+let rec pp_ty = function
 	TyInt -> print_string "int"
 | 	TyBool -> print_string "bool"
+|	TyVar tyvar -> print_string ("'" ^ string_of_int tyvar)
+|	TyFun (ty1, ty2) -> 
+		(match ty1 with
+			TyFun _ -> 
+				print_string "(";pp_ty ty1;print_string ")"
+		|	_ -> pp_ty ty1);
+		print_string " -> ";
+		pp_ty ty2
+
+let fresh_tyvar = 
+	let counter = ref 0 in
+	let body () =
+		let v = !counter in
+		counter := v + 1; v
+	in  body
 let ty_prim op ty1 ty2 = match op with
 	Plus -> 
 		(match ty1, ty2 with
