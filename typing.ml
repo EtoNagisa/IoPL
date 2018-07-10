@@ -4,6 +4,59 @@ let err s = raise (Error s)
 
 type tyenv = ty Environment.t
 
+
+
+type subst = (tyvar * ty) list
+
+let rec subst_type st t =
+	match st with
+		[] -> t
+	|	(var,ty) :: rest ->
+			let rec substi (var,ty) t =
+				match t with
+					TyInt -> TyInt 
+				|	TyBool -> TyBool
+				|	TyVar v ->
+						if v = var then ty
+						else TyVar v
+				|	TyFun (ty1, ty2) -> TyFun (substi (var,ty) ty1,substi (var,ty) ty2)
+			in subst_type rest (substi (var,ty) t)
+
+let rec subst_one st = function
+	[] -> []
+|	(ty1, ty2)::rest ->
+		(subst_type [st] ty1, subst_type [st] ty2) :: subst_one st rest
+
+let rec contains tyv = function
+	TyInt -> false
+|	TyBool -> false
+|	TyVar a ->
+		tyv = a
+|	TyFun (ty1, ty2) -> 
+		(contains tyv ty1) || (contains tyv ty2)
+
+let rec unify = function 
+	[] -> []
+|	(ty1, ty2) :: rest ->
+		match ty1,ty2 with
+			TyInt, TyInt -> unify rest
+		|	TyBool, TyBool -> unify rest
+		|	TyVar a, TyInt -> unify (subst_one (a, TyInt) rest)
+		|	TyVar a, TyBool -> unify (subst_one (a, TyBool) rest)
+		|	TyInt, TyVar a -> unify (subst_one (a, TyInt) rest)
+		|	TyBool, TyVar a -> unify (subst_one (a, TyBool) rest)
+		|	TyVar a, TyVar b ->
+				if a=b then unify rest
+				else unify (subst_one (a, TyVar b) rest)
+		|	TyVar a, TyFun _ ->
+				if contains a ty2 then err ("type error in tyfun")
+				else (a, ty2) :: unify (subst_one (a, ty2) rest)
+		|	TyFun _, TyVar a ->
+				if contains a ty1 then err ("type error in tyfun")
+				else (a, ty1) :: unify (subst_one (a, ty1) rest)
+		|	TyFun(a1,a2), TyFun(b1,b2) ->unify ((a1,b1)::(a2,b2)::rest)
+		|	_ -> err ("type error")
+
 let rec pp_ty = function
 	TyInt -> print_string "int"
 | 	TyBool -> print_string "bool"

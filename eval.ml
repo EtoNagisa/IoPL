@@ -40,10 +40,10 @@ let rec distinct l ty =
         ([], []) -> ([], [])
     |   ((id, v) :: restl,t :: restty) ->
         if exists id restl then distinct restl restty
-        else (
+        else 
             let (a,b) = distinct restl restty in
             ((id, v ):: a, t::b)
-        )
+        
 let rec apply_prim env op arg1 arg2 = match op, arg1, arg2 with
     And, _, _ ->
         let e1 = eval_exp env arg1 in
