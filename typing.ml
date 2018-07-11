@@ -92,7 +92,7 @@ let rec unify = function
 		|	TyVar a, TyInt -> (a, TyInt) :: unify (subst_eqs [(a, TyInt)] rest)
 		|	TyVar a, TyBool -> (a, TyBool) :: unify (subst_eqs [(a, TyBool)] rest)
 		|	TyInt, TyVar a -> (a, TyInt) :: unify (subst_eqs [(a, TyInt)] rest)
-		|	TyBool, TyVar a -> (a, TyInt) :: unify (subst_eqs [(a, TyBool)] rest)
+		|	TyBool, TyVar a -> (a, TyBool) :: unify (subst_eqs [(a, TyBool)] rest)
 		|	TyVar a, TyVar b ->
 				if a=b then unify rest
 				else (a, TyVar b) :: unify (subst_eqs [(a, TyVar b)] rest)
@@ -140,11 +140,14 @@ let rec ty_exp tyenv = function
 		let eqs2 = eqs_of_subst s2 in
 		let eqs3 = eqs_of_subst s3 in
 		let eqs = (ty1, TyBool) :: (ty2, ty3) :: eqs1 @ eqs2 @ eqs3 in
-		let s = unify eqs in (s,subst_type s ty2)
+		let s = unify eqs in (s,subst_type s ty3)
 | 	LetExp (Let [(id,exp1)], exp2) ->
 		let (s1, ty1) = ty_exp tyenv exp1 in
-		let newenv = Environment.extend id ty1 tyenv in
-		ty_exp newenv exp2
+		let (s2, ty2) = ty_exp (Environment.extend id ty1 tyenv) exp2 in
+		let eqs1 = eqs_of_subst s1 in
+		let eqs2 = eqs_of_subst s2 in
+		let eqs = eqs1 @ eqs2 in
+		let s = unify eqs in (s, subst_type s ty2)
 |	FunExp (id, exp) ->
 		let domty = TyVar (fresh_tyvar ()) in
 		let (s, ranty) =
