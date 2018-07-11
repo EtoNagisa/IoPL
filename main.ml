@@ -5,8 +5,8 @@ open Typing
 let rec print_val l ty = 
     match l,ty with
     ([], []) -> ()
-|   ((id, v) :: restl , t :: restty)-> 
-        print_string ("val " ^ id ^ " :");
+|   ((id, v) :: restl , (_, t) :: restty)-> 
+        print_string ("val " ^ id ^ " : ");
         pp_ty t;
         print_string " = ";
         pp_val v;
@@ -22,11 +22,15 @@ let rec read_eval_print env tyenv=
         (print_val l ty;
         read_eval_print newenv tyenv)
     with
-        Error s ->
+        Eval.Error s ->
             print_string s;
             print_newline();
             read_eval_print env tyenv
     |   Failure s ->
+            print_string s;
+            print_newline();
+            read_eval_print env tyenv
+    |   Typing.Error s ->
             print_string s;
             print_newline();
             read_eval_print env tyenv
