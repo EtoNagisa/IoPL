@@ -7,6 +7,14 @@ type tyenv = ty Environment.t
 
 type tyvarenv = string Environment.t
 type subst = (tyvar * ty) list
+
+let rec freevar_ty = function
+	TyInt -> MySet.empty
+|	TyBool -> MySet.empty
+|	TyVar x -> MySet.singleton x
+|	TyFun (ty1, ty2) -> MySet.union (freevar_ty ty1) (freevar_ty ty2)
+
+
 let nth_tyvar n =
 	if n<26 then Char.escaped (char_of_int (int_of_char ('a') + n))
 	else Char.escaped (char_of_int (int_of_char ('a') + n mod 26)) ^ string_of_int (n/26)
@@ -147,6 +155,14 @@ let rec ty_exp tyenv = function
 		let eqs1 = eqs_of_subst s1 in
 		let eqs2 = eqs_of_subst s2 in
 		let eqs = eqs1 @ eqs2 in
+		let s = unify eqs in (s, subst_type s ty2)
+|	LetExp (Letrec [(id,exp1)], exp2) ->
+		let tyv = TyVar (fresh_tyvar ()) in
+		let (s1, ty1) = ty_exp (Environment.extend id tyv tyenv) exp1 in
+		let (s2, ty2) = ty_exp (Environment.extend id ty1 tyenv) exp2 in
+		let eqs1 = eqs_of_subst s1 in
+		let eqs2 = eqs_of_subst s2 in
+		let eqs =  (tyv, ty1) :: eqs1 @ eqs2 in
 		let s = unify eqs in (s, subst_type s ty2)
 |	FunExp (id, exp) ->
 		let domty = TyVar (fresh_tyvar ()) in
