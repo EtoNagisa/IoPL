@@ -1,12 +1,28 @@
 open Syntax
+open MySet
 
 exception Error of string
 let err s = raise (Error s)
 
-type tyenv = ty Environment.t
+type tysc = TyScheme of tyvar list * ty
+type tyenv = tysc Environment.t
+type tyset = tyvar MySet.t
 
 type tyvarenv = string Environment.t
 type subst = (tyvar * ty) list
+
+let tysc_of_ty ty = TyScheme ([], ty)
+
+
+let rec exists x = function
+    [] -> false
+|   (id, _) :: rest -> 
+        if id=x then true else exists x rest
+let rec consistent = function
+    [] -> true
+|   (id, _) :: rest ->
+        if exists id rest then false else consistent rest  
+
 
 let rec freevar_ty = function
 	TyInt -> MySet.empty
@@ -14,50 +30,19 @@ let rec freevar_ty = function
 |	TyVar x -> MySet.singleton x
 |	TyFun (ty1, ty2) -> MySet.union (freevar_ty ty1) (freevar_ty ty2)
 
+let rec freevar_tysc tysc =
+	let (l, ty1) = tysc in
+	diff (freevar_ty ty1) (from_list l)
 
-let nth_tyvar n =
-	if n<26 then Char.escaped (char_of_int (int_of_char ('a') + n))
-	else Char.escaped (char_of_int (int_of_char ('a') + n mod 26)) ^ string_of_int (n/26)
-
-let attr_tyvar ty =
-	let n = ref 0 in
-	let rec attr_tyvar tyvarenv= function
-		TyInt -> tyvarenv
-	|	TyBool -> tyvarenv
-	|	TyVar a -> 
-			(try ignore(Environment.lookup (string_of_int a) tyvarenv);tyvarenv
-			with  
-				Environment.Not_bound ->
-					let v = !n in
-					(n := v + 1;
-					Environment.extend (string_of_int a) (nth_tyvar v) tyvarenv))
-	|	TyFun (ty1, ty2) ->
-			let newenv = attr_tyvar tyvarenv ty1 in
-			attr_tyvar newenv ty2
-	in attr_tyvar Environment.empty ty
-
-let pp_ty ty = 
-	let tyvarenv = attr_tyvar ty in
-	let rec pp_ty = function 
-		TyInt -> print_string "int"
-	| 	TyBool -> print_string "bool"
-	|	TyVar tyvar -> print_string ("'" ^ Environment.lookup (string_of_int tyvar) tyvarenv)
-	|	TyFun (ty1, ty2) -> 
-			(match ty1 with
-				TyFun _ -> 
-					print_string "(";pp_ty ty1;print_string ")"
-			|	_ -> pp_ty ty1);
-			print_string " -> ";
-			pp_ty ty2
-	in pp_ty ty
-
-let rec print_subst = function
-	[] -> ()
-|	(tyvar, ty) :: rest ->
-		print_int tyvar;
-		print_string " = ";
-		pp_ty ty;
-		print_subst rest
+let freevar_tyenv tyenv = 
+	let f (x:tysc) tyenv =
+		match x with TyScheme (_, ty) ->
+		match ty with
+			TyVar a -> insert a tyenv
+		|	TyFun (ty1, ty2) -> union (union (freevar_ty ty1) (freevar_ty ty2)) tyenv
+		|	_ -> tyenv
+	in
+	Environment.fold_right f tyenv MySet.empty
 
 let rec subst_type st t =
 	match st with
@@ -82,14 +67,73 @@ let rec eqs_of_subst = function
 	[] -> []
 |	(tyv,ty) :: rest -> (TyVar tyv, ty) :: eqs_of_subst rest
 
+let closure ty tyenv subst =
+	let fv_tyenv2 = freevar_tyenv tyenv in
+	let fv_tyenv =
+		MySet.bigunion
+			(MySet.map
+				(fun id -> freevar_ty (subst_type subst (TyVar id)))
+				fv_tyenv2) in
+	let ids = MySet.diff (freevar_ty ty) fv_tyenv in
+	TyScheme (MySet.to_list ids, ty)
 
-let rec contains tyv = function
-	TyInt -> false
-|	TyBool -> false
-|	TyVar a ->
-		tyv = a
-|	TyFun (ty1, ty2) -> 
-		(contains tyv ty1) || (contains tyv ty2)
+let nth_tyvar n =
+	if n<26 then Char.escaped (char_of_int (int_of_char ('a') + n))
+	else Char.escaped (char_of_int (int_of_char ('a') + n mod 26)) ^ string_of_int (n/26)
+
+let attr_tyvar ty =
+	let n = ref 0 in
+	let rec attr_tyvar tyvarenv= function
+		TyInt -> tyvarenv
+	|	TyBool -> tyvarenv
+	|	TyVar a -> 
+			(try ignore(Environment.lookup (string_of_int a) tyvarenv);tyvarenv
+			with  
+				Environment.Not_bound ->
+					let v = !n in
+					(n := v + 1;
+					Environment.extend (string_of_int a) (nth_tyvar v) tyvarenv))
+	|	TyFun (ty1, ty2) ->
+			let newenv = attr_tyvar tyvarenv ty1 in
+			attr_tyvar newenv ty2
+	in attr_tyvar Environment.empty ty
+
+let rec pp_ty_zako = function
+	TyInt -> print_string "int"
+	| 	TyBool -> print_string "bool"
+	|	TyVar tyvar -> print_string ("'" ^ (string_of_int tyvar))
+	|	TyFun (ty1, ty2) -> 
+			(match ty1 with
+				TyFun _ -> 
+					print_string "(";pp_ty_zako ty1;print_string ")"
+			|	_ -> pp_ty_zako ty1);
+			print_string " -> ";
+			pp_ty_zako ty2
+let pp_ty ty = 
+	let tyvarenv = attr_tyvar ty in
+	let rec pp_ty = function 
+		TyInt -> print_string "int"
+	| 	TyBool -> print_string "bool"
+	|	TyVar tyvar -> print_string ("'" ^ Environment.lookup (string_of_int tyvar) tyvarenv)
+	|	TyFun (ty1, ty2) -> 
+			(match ty1 with
+				TyFun _ -> 
+					print_string "(";pp_ty ty1;print_string ")"
+			|	_ -> pp_ty ty1);
+			print_string " -> ";
+			pp_ty ty2
+	in pp_ty ty
+
+let rec print_subst = function
+	[] -> ()
+|	(tyvar, ty) :: rest ->
+		print_int tyvar;
+		print_string " = ";
+		pp_ty_zako ty;
+		print_newline();
+		print_subst rest
+
+
 
 let rec unify = function 
 	[] -> []
@@ -105,10 +149,10 @@ let rec unify = function
 				if a=b then unify rest
 				else (a, TyVar b) :: unify (subst_eqs [(a, TyVar b)] rest)
 		|	TyVar a, TyFun _ ->
-				if contains a ty2 then err ("type error in tyfun")
+				if member a (freevar_ty ty2) then err ("type error in tyfun")
 				else (a, ty2) :: unify (subst_eqs [(a, ty2)] rest)
 		|	TyFun _, TyVar a ->
-				if contains a ty1 then err ("type error in tyfun")
+				if member a (freevar_ty ty1) then err ("type error in tyfun")
 				else (a, ty1) :: unify (subst_eqs [(a, ty1)] rest)
 		|	TyFun(a1,a2), TyFun(b1,b2) ->unify ((a1,b1)::(a2,b2)::rest)
 		|	_ -> err ("type error")
@@ -129,8 +173,11 @@ let ty_prim op ty1 ty2 = match op with
 
 let rec ty_exp tyenv = function
 	Var x ->
-		(try ([],Environment.lookup x tyenv) with
-		Environment.Not_bound -> err ("variable not bound: " ^ x))
+		(try 
+			let TyScheme (vars, ty) = Environment.lookup x tyenv in
+			let s = List.map (fun id -> (id, TyVar (fresh_tyvar ()))) vars in
+			([], subst_type s ty)
+		with Environment.Not_bound -> err ("variable not bound: " ^ x))
 | 	ILit _ -> ([], TyInt)
 | 	BLit _ -> ([], TyBool)
 | 	BinOp (op, exp1, exp2) ->
@@ -151,15 +198,15 @@ let rec ty_exp tyenv = function
 		let s = unify eqs in (s,subst_type s ty3)
 | 	LetExp (Let [(id,exp1)], exp2) ->
 		let (s1, ty1) = ty_exp tyenv exp1 in
-		let (s2, ty2) = ty_exp (Environment.extend id ty1 tyenv) exp2 in
+		let (s2, ty2) = ty_exp (Environment.extend id (closure ty1 tyenv s1) tyenv) exp2 in
 		let eqs1 = eqs_of_subst s1 in
 		let eqs2 = eqs_of_subst s2 in
 		let eqs = eqs1 @ eqs2 in
 		let s = unify eqs in (s, subst_type s ty2)
 |	LetExp (Letrec [(id,exp1)], exp2) ->
 		let tyv = TyVar (fresh_tyvar ()) in
-		let (s1, ty1) = ty_exp (Environment.extend id tyv tyenv) exp1 in
-		let (s2, ty2) = ty_exp (Environment.extend id ty1 tyenv) exp2 in
+		let (s1, ty1) = ty_exp (Environment.extend id (TyScheme ([], tyv)) tyenv) exp1 in
+		let (s2, ty2) = ty_exp (Environment.extend id (closure (subst_type s1 ty1) tyenv s1) tyenv) exp2 in
 		let eqs1 = eqs_of_subst s1 in
 		let eqs2 = eqs_of_subst s2 in
 		let eqs =  (tyv, ty1) :: eqs1 @ eqs2 in
@@ -167,7 +214,7 @@ let rec ty_exp tyenv = function
 |	FunExp (id, exp) ->
 		let domty = TyVar (fresh_tyvar ()) in
 		let (s, ranty) =
-			ty_exp (Environment.extend id domty tyenv) exp in
+			ty_exp (Environment.extend id (TyScheme ([], domty)) tyenv) exp in
 			(s, TyFun (subst_type s domty, ranty))
 |	AppExp (exp1, exp2) ->
 		let (s1, ty1) = ty_exp tyenv exp1 in
@@ -186,6 +233,25 @@ let rec ty_exp tyenv = function
 		
 | _ -> err ("Not Implemented!")
 
-let ty_decl tyenv = function
-	Exp e -> [ty_exp tyenv e]
-| 	_ -> err ("Not Implemented!")
+
+(*
+let rec ty_decl env l =
+
+let rec ty_decls tyenv = function
+	[] -> (tyenv, [])
+|	(Let l) :: rest ->
+		let (newenv,str) = ty_decl envl in
+		let (retenv,retstr) = ty_decls newenv rest in
+		(retenv, str@retstr)s
+|	(Letrec l) :: rest ->
+		let (newenv,str) = ty_rec_decl env l in
+		let (retenv,retstr) = ty_decls newenv rest in
+		(retenv, str@retstr) 
+		*)
+let ty tyenv = function
+	Exp e -> 
+		let (s,ty) = ty_exp tyenv e in
+		(tyenv, [ty]);
+| 	Decl [Let [(id,exp)]] -> 
+		let (s,ty) = ty_exp tyenv exp in
+		(Environment.extend id (closure ty tyenv s) tyenv, [ty])

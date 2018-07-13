@@ -114,13 +114,16 @@ and eval_exp env = function
                 eval_exp newenv body
         |   _ -> err ("Non-function value is applied"))
 
-and eval_decl env renv = function
-    [] -> (renv, [])
-|   (id, e) :: rest ->
-        let v = eval_exp env e in
-        let (retenv, reststr) = eval_decl env (Environment.extend id v renv) rest in
-        if consistent ((id,v)::reststr) then (retenv, (id, v)::reststr)
-        else err ("variable " ^ id ^ " is bound several times")
+and eval_decl env l =
+    let rec f env renv= function
+        [] -> (renv, [])
+|       (id, e) :: rest ->
+            let v = eval_exp env e in
+            let (retenv, reststr) = f env (Environment.extend id v renv) rest in
+            if consistent ((id,v)::reststr) then (retenv, (id, v)::reststr)
+            else err ("variable " ^ id ^ " is bound several times")
+    in f env env l
+
 and eval_rec_decl env l = 
     let dummyenv = ref Environment.empty in
     let rec f env = function
@@ -142,7 +145,7 @@ and eval_rec_decl env l =
 and eval_decls env = function
     [] -> (env,[])
 |   (Let l ):: rest ->
-        let (newenv,str) = eval_decl env env l in
+        let (newenv,str) = eval_decl env l in
         let (retenv,retstr) = eval_decls newenv rest
         in (retenv,str@retstr)
 |   (Letrec l) :: rest ->

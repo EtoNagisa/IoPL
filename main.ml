@@ -5,7 +5,7 @@ open Typing
 let rec print_val l ty = 
     match l,ty with
     ([], []) -> ()
-|   ((id, v) :: restl , (_, t) :: restty)-> 
+|   ((id, v) :: restl , t :: restty)-> 
         print_string ("val " ^ id ^ " : ");
         pp_ty t;
         print_string " = ";
@@ -18,9 +18,9 @@ let rec read_eval_print env tyenv=
     try
         let decl = Parser.toplevel Lexer.main (Lexing.from_channel stdin) in
         let (newenv, l)  = eval env decl in
-        let ty = ty_decl tyenv decl in
+        let (newtyenv,ty) = ty tyenv decl in
         (print_val l ty;
-        read_eval_print newenv tyenv)
+        read_eval_print newenv newtyenv)
     with
         Eval.Error s ->
             print_string s;
@@ -34,11 +34,11 @@ let rec read_eval_print env tyenv=
             print_string s;
             print_newline();
             read_eval_print env tyenv
-    |   _ ->
+    (*|   _ ->
             print_string "an error has occured while parsing";
             print_newline();
             read_eval_print env tyenv
-
+*)
 let initial_env =
     Environment.extend "i" (IntV 1)
         (Environment.extend "v" (IntV 5)
@@ -51,9 +51,9 @@ let initial_env =
                                     Environment.empty)))))))
 
 let initial_tyenv =
-    Environment.extend "i" TyInt
-        (Environment.extend "v" TyInt
-            (Environment.extend "x" TyInt Environment.empty))
+    Environment.extend "i" (TyScheme([], TyInt))
+        (Environment.extend "v" (TyScheme ([], TyInt))
+            (Environment.extend "x" (TyScheme ([], TyInt)) Environment.empty))
 let batch_interpreter () =
     let fname = Sys.argv.(1) in 
         try
