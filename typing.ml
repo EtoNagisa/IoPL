@@ -243,31 +243,46 @@ let rec ty_exp tyenv = function
 | _ -> err ("Not Implemented!")
 
 
-(*
-let rec ty_decl env l =
 
+let ty_decl tyenv l =
+	let rec f tyenv renv = function
+		[] -> (renv, [])
+	|	(id, e) :: rest ->
+			let (s,ty) = ty_exp tyenv e in
+			let (retenv, reststr) = 
+				f tyenv (Environment.extend id (closure ty tyenv s) tyenv) rest in
+				(retenv, ty :: reststr)
+	in f tyenv tyenv l
+	
+let ty_rec_decl tyenv l = 
+	let rec f tyenv renv = function
+		[] -> (renv, [])
+	|	(id, e) :: rest ->
+			let tyv = fresh_tyvar() in
+			let (s,ty) = ty_exp (Environment.extend id (TyScheme ([], TyVar (tyv))) tyenv) e in
+			let eqs = (TyVar (tyv), ty) :: eqs_of_subst s in
+			let s1 = unify eqs in
+			let ty1 = subst_type s1 ty in
+			let (retenv, reststr) =
+				f tyenv (Environment.extend id (closure ty1 tyenv s1) tyenv) rest in
+				(retenv, ty1 :: reststr)
+	in f tyenv tyenv l
+	
+	
 let rec ty_decls tyenv = function
 	[] -> (tyenv, [])
 |	(Let l) :: rest ->
-		let (newenv,str) = ty_decl envl in
+		let (newenv,str) = ty_decl tyenv l in
 		let (retenv,retstr) = ty_decls newenv rest in
-		(retenv, str@retstr)s
+		(retenv, str@retstr)
 |	(Letrec l) :: rest ->
-		let (newenv,str) = ty_rec_decl env l in
+		let (newenv,str) = ty_rec_decl tyenv l in
 		let (retenv,retstr) = ty_decls newenv rest in
 		(retenv, str@retstr) 
-		*)
+		
 let ty tyenv = function
 	Exp e -> 
 		let (s,ty) = ty_exp tyenv e in
 		(tyenv, [ty]);
-| 	Decl [Let [(id,exp)]] -> 
-		let (s,ty) = ty_exp tyenv exp in
-		(Environment.extend id (closure ty tyenv s) tyenv, [ty])
-|	Decl [Letrec [(id,exp)]] ->
-		let tyv = fresh_tyvar() in
-		let (s,ty) = ty_exp (Environment.extend id (TyScheme ([], TyVar (tyv))) tyenv) exp in
-		let eqs = (TyVar (tyv), ty) :: eqs_of_subst s in
-		let s1 = unify eqs in
-		let ty1 = subst_type s1 ty in
-		(Environment.extend id (closure ty1 tyenv s1) tyenv, [ty1])
+| 	Decl e ->
+		ty_decls tyenv e 
