@@ -133,9 +133,14 @@ let rec print_subst = function
 		print_newline();
 		print_subst rest
 
+let rec print_sc =function
+	[] -> ()
+|	id::rest  ->
+		print_int id;
+		print_sc rest
 
-
-let rec unify = function 
+let rec unify tl= 
+	match tl with
 	[] -> []
 |	(ty1, ty2) :: rest ->
 		match ty1,ty2 with
@@ -164,6 +169,7 @@ let fresh_tyvar =
 		let v = !counter in
 		counter := v + 1; v
 	in  body
+
 let ty_prim op ty1 ty2 = match op with
 	Plus -> ([(ty1, TyInt); (ty2, TyInt)], TyInt)
 |	Mult -> ([(ty1, TyInt); (ty2, TyInt)], TyInt)
@@ -206,11 +212,14 @@ let rec ty_exp tyenv = function
 |	LetExp (Letrec [(id,exp1)], exp2) ->
 		let tyv = TyVar (fresh_tyvar ()) in
 		let (s1, ty1) = ty_exp (Environment.extend id (TyScheme ([], tyv)) tyenv) exp1 in
-		let (s2, ty2) = ty_exp (Environment.extend id (closure (subst_type s1 ty1) tyenv s1) tyenv) exp2 in
-		let eqs1 = eqs_of_subst s1 in
+		let eqs1 = (tyv, ty1) :: eqs_of_subst s1 in
+		let s =unify eqs1 in
+		let ty1_s = subst_type s ty1 in
+		let (s2, ty2) = ty_exp (Environment.extend id (closure ty1_s tyenv s) tyenv) exp2 in
 		let eqs2 = eqs_of_subst s2 in
-		let eqs =  (tyv, ty1) :: eqs1 @ eqs2 in
-		let s = unify eqs in (s, subst_type s ty2)
+		let eqs =  eqs1 @ eqs2 in
+		let s2 = unify eqs in 
+		(s2, subst_type s2 ty2)
 |	FunExp (id, exp) ->
 		let domty = TyVar (fresh_tyvar ()) in
 		let (s, ranty) =
@@ -255,3 +264,10 @@ let ty tyenv = function
 | 	Decl [Let [(id,exp)]] -> 
 		let (s,ty) = ty_exp tyenv exp in
 		(Environment.extend id (closure ty tyenv s) tyenv, [ty])
+|	Decl [Letrec [(id,exp)]] ->
+		let tyv = fresh_tyvar() in
+		let (s,ty) = ty_exp (Environment.extend id (TyScheme ([], TyVar (tyv))) tyenv) exp in
+		let eqs = (TyVar (tyv), ty) :: eqs_of_subst s in
+		let s1 = unify eqs in
+		let ty1 = subst_type s1 ty in
+		(Environment.extend id (closure ty1 tyenv s1) tyenv, [ty1])
