@@ -202,24 +202,12 @@ let rec ty_exp tyenv = function
 		let eqs3 = eqs_of_subst s3 in
 		let eqs = (ty1, TyBool) :: (ty2, ty3) :: eqs1 @ eqs2 @ eqs3 in
 		let s = unify eqs in (s,subst_type s ty3)
-| 	LetExp (Let [(id,exp1)], exp2) ->
-		let (s1, ty1) = ty_exp tyenv exp1 in
-		let (s2, ty2) = ty_exp (Environment.extend id (closure ty1 tyenv s1) tyenv) exp2 in
-		let eqs1 = eqs_of_subst s1 in
-		let eqs2 = eqs_of_subst s2 in
+| 	LetExp (l, exp) ->
+		let (newenv, (s1, _)) = ty_decls tyenv [l] in
+		let (s2, ty2) = ty_exp newenv exp in
+		let eqs1 = eqs_of_subst s1 and eqs2 = eqs_of_subst s2 in
 		let eqs = eqs1 @ eqs2 in
 		let s = unify eqs in (s, subst_type s ty2)
-|	LetExp (Letrec [(id,exp1)], exp2) ->
-		let tyv = TyVar (fresh_tyvar ()) in
-		let (s1, ty1) = ty_exp (Environment.extend id (TyScheme ([], tyv)) tyenv) exp1 in
-		let eqs1 = (tyv, ty1) :: eqs_of_subst s1 in
-		let s =unify eqs1 in
-		let ty1_s = subst_type s ty1 in
-		let (s2, ty2) = ty_exp (Environment.extend id (closure ty1_s tyenv s) tyenv) exp2 in
-		let eqs2 = eqs_of_subst s2 in
-		let eqs =  eqs1 @ eqs2 in
-		let s2 = unify eqs in 
-		(s2, subst_type s2 ty2)
 |	FunExp (id, exp) ->
 		let domty = TyVar (fresh_tyvar ()) in
 		let (s, ranty) =
@@ -244,45 +232,61 @@ let rec ty_exp tyenv = function
 
 
 
-let ty_decl tyenv l =
-	let rec f tyenv renv = function
-		[] -> (renv, [])
-	|	(id, e) :: rest ->
-			let (s,ty) = ty_exp tyenv e in
-			let (retenv, reststr) = 
-				f tyenv (Environment.extend id (closure ty tyenv s) tyenv) rest in
-				(retenv, ty :: reststr)
-	in f tyenv tyenv l
-	
-let ty_rec_decl tyenv l = 
-	let rec f tyenv renv = function
-		[] -> (renv, [])
-	|	(id, e) :: rest ->
-			let tyv = fresh_tyvar() in
-			let (s,ty) = ty_exp (Environment.extend id (TyScheme ([], TyVar (tyv))) tyenv) e in
-			let eqs = (TyVar (tyv), ty) :: eqs_of_subst s in
-			let s1 = unify eqs in
-			let ty1 = subst_type s1 ty in
-			let (retenv, reststr) =
-				f tyenv (Environment.extend id (closure ty1 tyenv s1) tyenv) rest in
-				(retenv, ty1 :: reststr)
-	in f tyenv tyenv l
+and ty_decl tyenv = function
+	[] -> (tyenv, ([], []))
+|	(id, e) :: rest ->
+		let (s,ty) = ty_exp tyenv e in
+		let (renv, (rs,rty)) = ty_decl tyenv rest in
+		(Environment.extend id (closure ty tyenv s) renv, (s @ rs, ty :: rty))
+
 	
 	
-let rec ty_decls tyenv = function
-	[] -> (tyenv, [])
+and ty_rec_decl tyenv l = 
+	let rec f tyenv = function
+		[] -> ([], [], tyenv)  
+	|	(id, e) :: rest -> 
+			let tyv = TyVar (fresh_tyvar ()) in
+			let (ids, tyl, retenv) = f tyenv rest in
+			(id :: ids, tyv :: tyl , Environment.extend id (TyScheme ([], tyv)) retenv)
+	in let (ids, tyvarl, newenv) = f tyenv l in
+	
+	let rec g  tyvarl l = 
+		match tyvarl,l with
+			[], [] -> ([], [])
+		|	v :: vrest, (id, e) :: rest ->
+				let (s,ty) = ty_exp newenv e in
+				let (reqs,rty) = g vrest rest in
+				((v, ty) :: (eqs_of_subst s) @ reqs , ty :: rty)
+	in let (eqs,ty) = g tyvarl l in
+	let s = unify eqs in
+	let rec h tyenv ids l =
+		match ids,l with
+		[], [] -> (tyenv, [])
+	|	id :: idrest, ty :: rest ->
+			let (retenv, t) = h tyenv idrest rest in
+			let ty_s = subst_type s ty in
+			((Environment.extend id (closure ty_s tyenv s) retenv), ty_s :: t)
+	in let (retenv, retty) = h tyenv ids ty in
+	(retenv, (s,retty))
+
+
+	
+	
+and ty_decls tyenv = function
+	[] -> (tyenv,([], []))
 |	(Let l) :: rest ->
-		let (newenv,str) = ty_decl tyenv l in
-		let (retenv,retstr) = ty_decls newenv rest in
-		(retenv, str@retstr)
+		let (newenv, (s ,str)) = ty_decl tyenv l in
+		let (retenv, (rets,retstr)) = ty_decls newenv rest in
+		(retenv, (s@rets, str@retstr))
 |	(Letrec l) :: rest ->
-		let (newenv,str) = ty_rec_decl tyenv l in
-		let (retenv,retstr) = ty_decls newenv rest in
-		(retenv, str@retstr) 
+		let (newenv, (s, str)) = ty_rec_decl tyenv l in
+		let (retenv, (rets,retstr)) = ty_decls newenv rest in
+		(retenv, (s@rets, str@retstr)) 
 		
 let ty tyenv = function
 	Exp e -> 
 		let (s,ty) = ty_exp tyenv e in
 		(tyenv, [ty]);
 | 	Decl e ->
-		ty_decls tyenv e 
+		let (tyenv, (s,ty)) = ty_decls tyenv e in
+		(tyenv, ty)
