@@ -5,8 +5,10 @@ open Syntax
 %token LPAREN RPAREN SEMISEMI
 %token PLUS MULT LT LAND LOR
 %token IF THEN ELSE TRUE FALSE
-%token LET IN EQ
+%token LET IN EQ 
 %token RARROW FUN REC AND DFUN
+%token LBRACKET RBRACKET CONS MATCH WITH PIPE
+%token SEMI
 
 %token <int> INTV
 %token <Syntax.id> ID
@@ -34,15 +36,21 @@ AndDecl :
 Expr :
     e=IfExpr { e }
   | e=LetExpr { e }
-  | e=ORExpr { e }
   | e=FunExpr { e }
+  | e=MatchExpr { e }
+  | e=ORExpr { e }
+
 
 ORExpr :
     l=ANDExpr LOR r=ORExpr { BinOp (Or, l, r) }
   | e=ANDExpr { e }
 
 ANDExpr :
-    l=LTExpr LAND r=ANDExpr { BinOp (And, l, r) }
+    l=CONSExpr LAND r=ANDExpr { BinOp (And, l, r) }
+  | e=CONSExpr { e }
+
+CONSExpr :
+    l=LTExpr CONS r=CONSExpr { BinOp (Cons, l, r) }
   | e=LTExpr { e }
 
 LTExpr : 
@@ -66,6 +74,7 @@ AExpr :
   | TRUE   { BLit true }
   | FALSE  { BLit false }
   | i=Name   { Var i }
+  | LBRACKET e=Exprs RBRACKET { ListExp e }
   | LPAREN e=Expr RPAREN { e }
 
 Name :
@@ -76,6 +85,11 @@ Name :
   | LPAREN LOR RPAREN { "( || )"}
   | x=ID { x }
   
+Exprs :
+    e = Expr SEMI l = Exprs { e :: l }
+  | e = Expr { [e] }
+  |    { [] }
+
 IfExpr :
     IF c=Expr THEN t=Expr ELSE e=Expr { IfExp (c, t, e) }
 
@@ -89,6 +103,9 @@ FunExpr :
     FUN e=ARFun { e }
   | DFUN e=DARFun { e }
 
+MatchExpr :
+    MATCH e1 = Expr WITH LBRACKET RBRACKET RARROW e2 = Expr PIPE x1 = Name CONS x2=Name RARROW e3 = Expr 
+      { MatchExp (e1, e2, x1, x2, e3) }
 EQFun :
     x=Name e=EQFun { FunExp (x, e) }
   | x=Name EQ e=Expr { FunExp (x, e) }

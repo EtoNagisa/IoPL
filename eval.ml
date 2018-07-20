@@ -4,6 +4,7 @@ open Syntax
 type exval =
     | IntV of int
     | BoolV of bool
+    | ListV of exval list
     | ProcV of id * exp * dnval Environment.t ref
     | DProcV of id * exp 
 and dnval = exval
@@ -20,6 +21,14 @@ let err s = raise (Error s)
 let rec string_of_exval = function
     IntV i -> string_of_int i
 |   BoolV b -> string_of_bool b
+|   ListV l ->
+        let rec f = function
+            [] -> ""
+        |   [v] ->
+                string_of_exval v 
+        |   v1::v2::rest ->
+                string_of_exval v1 ^ ";" ^ f (v2::rest) 
+        in "[" ^ f l ^ "]"
 |   ProcV _ -> "<fun>"
 |   DProcV _ -> "<fun>"
 
@@ -76,6 +85,9 @@ let rec apply_prim env op arg1 arg2 = match op, arg1, arg2 with
         |   Mult, _, _ -> err ("Both arguments must be integer: *")
         |   Lt, IntV i1, IntV i2 -> BoolV (i1 < i2)
         |   Lt, _, _ -> err ("Both arguments must be integer: <")
+        |   Cons, v, ListV l -> ListV (v::l)
+        |   Cons, _, _ -> err ("arguments are not proper: ")
+
 
 and eval_exp env = function
     Var x -> 
@@ -113,6 +125,21 @@ and eval_exp env = function
                 let newenv = Environment.extend id arg env in
                 eval_exp newenv body
         |   _ -> err ("Non-function value is applied"))
+|   MatchExp (exp1,exp2,id1,id2,exp3) ->
+        let e1 = eval_exp env exp1 in
+        (match e1 with
+            ListV [] -> eval_exp env exp2
+        |   ListV (x::rest) ->
+                let newenv = Environment.extend id1 x 
+                                (Environment.extend id2 (ListV rest) env) in
+                eval_exp newenv exp3
+        |   _ -> err ("not implemented or invalid Match expression "))
+|   ListExp l ->
+        (let rec eval_list = function
+            [] -> []
+        |   e::rest ->
+                (eval_exp env e) :: (eval_list rest)
+        in let e = eval_list l in ListV e)
 
 and eval_decl env l =
     let rec f env renv= function

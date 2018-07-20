@@ -29,6 +29,7 @@ let rec freevar_ty = function
 |	TyBool -> MySet.empty
 |	TyVar x -> MySet.singleton x
 |	TyFun (ty1, ty2) -> MySet.union (freevar_ty ty1) (freevar_ty ty2)
+|	TyList t -> freevar_ty t
 
 let rec freevar_tysc tysc =
 	let (l, ty1) = tysc in
@@ -56,6 +57,7 @@ let rec subst_type st t =
 						if v = var then ty
 						else TyVar v
 				|	TyFun (ty1, ty2) -> TyFun (substi (var,ty) ty1,substi (var,ty) ty2)
+				|	TyList t1 -> TyList (substi (var,ty) t1)
 			in subst_type rest (substi (var,ty) t)
 
 let rec subst_eqs st = function
@@ -96,6 +98,8 @@ let attr_tyvar ty =
 	|	TyFun (ty1, ty2) ->
 			let newenv = attr_tyvar tyvarenv ty1 in
 			attr_tyvar newenv ty2
+	|	TyList t ->
+			attr_tyvar tyvarenv t 
 	in attr_tyvar Environment.empty ty
 
 let rec pp_ty_zako = function
@@ -109,6 +113,9 @@ let rec pp_ty_zako = function
 			|	_ -> pp_ty_zako ty1);
 			print_string " -> ";
 			pp_ty_zako ty2
+	|	TyList t ->
+			pp_ty_zako t;
+			print_string " list"
 let pp_ty ty = 
 	let tyvarenv = attr_tyvar ty in
 	let rec pp_ty = function 
@@ -122,6 +129,9 @@ let pp_ty ty =
 			|	_ -> pp_ty ty1);
 			print_string " -> ";
 			pp_ty ty2
+	|	TyList t -> 
+			pp_ty t;
+			print_string " list"
 	in pp_ty ty
 
 let rec print_subst = function
@@ -146,20 +156,20 @@ let rec unify tl=
 		match ty1,ty2 with
 			TyInt, TyInt -> unify rest
 		|	TyBool, TyBool -> unify rest
-		|	TyVar a, TyInt -> (a, TyInt) :: unify (subst_eqs [(a, TyInt)] rest)
-		|	TyVar a, TyBool -> (a, TyBool) :: unify (subst_eqs [(a, TyBool)] rest)
-		|	TyInt, TyVar a -> (a, TyInt) :: unify (subst_eqs [(a, TyInt)] rest)
-		|	TyBool, TyVar a -> (a, TyBool) :: unify (subst_eqs [(a, TyBool)] rest)
+		|	TyVar a, TyInt | TyInt, TyVar a -> (a, TyInt) :: unify (subst_eqs [(a, TyInt)] rest)
+		|	TyVar a, TyBool | TyBool, TyVar a-> (a, TyBool) :: unify (subst_eqs [(a, TyBool)] rest)
 		|	TyVar a, TyVar b ->
 				if a=b then unify rest
 				else (a, TyVar b) :: unify (subst_eqs [(a, TyVar b)] rest)
-		|	TyVar a, TyFun _ ->
-				if member a (freevar_ty ty2) then err ("type error in tyfun")
-				else (a, ty2) :: unify (subst_eqs [(a, ty2)] rest)
-		|	TyFun _, TyVar a ->
-				if member a (freevar_ty ty1) then err ("type error in tyfun")
-				else (a, ty1) :: unify (subst_eqs [(a, ty1)] rest)
+		|	TyVar a, TyFun (t1,t2) | TyFun (t1,t2), TyVar a->
+				if member a (freevar_ty (TyFun (t1,t2))) then err ("type error in tyfun")
+				else (a, (TyFun (t1,t2))) :: unify (subst_eqs [(a, (TyFun (t1,t2)))] rest)
 		|	TyFun(a1,a2), TyFun(b1,b2) ->unify ((a1,b1)::(a2,b2)::rest)
+		|	TyVar a, TyList t | TyList t, TyVar a -> 
+				if member a (freevar_ty (TyList t)) then err("type error in tylist")
+				else (a,TyList t) :: unify (subst_eqs [(a,TyList t)] rest)
+		|	TyList a, TyList b ->
+				unify ((a,b)::rest)
 		|	_ -> err ("type error")
 
 
@@ -176,6 +186,7 @@ let ty_prim op ty1 ty2 = match op with
 |	Lt -> ([(ty1, TyInt); (ty2, TyInt)], TyBool)
 |	And -> ([(ty1, TyBool); (ty2, TyBool)], TyBool)
 |	Or -> ([(ty1, TyBool); (ty2, TyBool)], TyBool)
+|	Cons -> ([(TyList ty1,ty2)], ty2)
 
 let rec ty_exp tyenv = function
 	Var x ->
@@ -227,6 +238,33 @@ let rec ty_exp tyenv = function
 				let eqs = (TyVar a, TyFun(ty2, ranty)) :: eqs1 @ eqs2 in
 				let s = unify eqs in (s,subst_type s ranty)
 		|	_ -> err ("non-function exp is applied"))
+|	MatchExp (exp1,exp2,id1,id2,exp3) ->
+		let (s1,ty1) = ty_exp tyenv exp1 and (s2,ty2) = ty_exp tyenv exp2 in
+		let tyv = fresh_tyvar() in
+		let (s3,ty3) = ty_exp (Environment.extend id1 (TyScheme([],TyVar tyv))
+								(Environment.extend id2 (TyScheme([],TyList (TyVar tyv))) tyenv)) exp3 in
+		let eqs = (ty1, TyList (TyVar tyv)) :: (ty2, ty3) :: (eqs_of_subst s1) @ (eqs_of_subst s2) @ (eqs_of_subst s3)
+		in let  s = unify eqs in (s,subst_type s ty2)
+|	ListExp l ->
+		(match l with
+			[] -> ([], TyList (TyVar (fresh_tyvar())))
+		| x::rest ->
+			let rec make_tylist = function
+				[] -> [],[]
+			|	(e::rest) ->
+					let (s,ty) = ty_exp tyenv e in
+					let (rs,rty) = make_tylist rest in
+					(s::rs,ty::rty) 
+			in let (s0,tyl) = make_tylist l in
+			let rec ty_list = function
+				[],[] -> []
+			|	([s],[t]) -> eqs_of_subst s 
+			|	(s::srest,ty1::ty2::trest) ->
+					(ty1,ty2) :: eqs_of_subst s  @ ty_list (srest,ty2::trest) 	
+
+			in let eqs = ty_list (s0,tyl) in
+			let (_, ty1) = ty_exp tyenv x in 
+			let s=unify eqs in (s,TyList (subst_type s ty1)))
 		
 | _ -> err ("Not Implemented!")
 
