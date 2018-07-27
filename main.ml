@@ -5,13 +5,18 @@ open Typing
 let rec print_val l ty = 
     match l,ty with
     ([], []) -> ()
-|   ((id, v) :: restl , t :: restty)-> 
-        print_string ("val " ^ id ^ " : ");
-        pp_ty t;
-        print_string " = ";
-        pp_val v;
-        print_newline();
-        print_val restl restty
+|   ((id, v) :: restl , t :: restty)->
+        if exists id restl then print_val restl restty
+        else (
+            print_string ("val " ^ id);
+            print_string (" : ");
+            pp_ty t;
+            print_string " = ";
+            pp_val v;
+            print_newline();
+            print_val restl restty
+            )
+
 let rec read_eval_print env tyenv=
     print_string "# ";
     flush stdout;
