@@ -14,16 +14,6 @@ type subst = (tyvar * ty) list
 let tysc_of_ty ty = TyScheme ([], ty)
 
 
-let rec exists x = function
-    [] -> false
-|   (id, _) :: rest -> 
-        if id=x then true else exists x rest
-let rec consistent = function
-    [] -> true
-|   (id, _) :: rest ->
-        if exists id rest then false else consistent rest  
-
-
 let rec freevar_ty = function
 	TyInt -> MySet.empty
 |	TyBool -> MySet.empty
@@ -102,20 +92,6 @@ let attr_tyvar ty =
 			attr_tyvar tyvarenv t 
 	in attr_tyvar Environment.empty ty
 
-let rec pp_ty_zako = function
-	TyInt -> print_string "int"
-	| 	TyBool -> print_string "bool"
-	|	TyVar tyvar -> print_string ("'" ^ (string_of_int tyvar))
-	|	TyFun (ty1, ty2) -> 
-			(match ty1 with
-				TyFun _ -> 
-					print_string "(";pp_ty_zako ty1;print_string ")"
-			|	_ -> pp_ty_zako ty1);
-			print_string " -> ";
-			pp_ty_zako ty2
-	|	TyList t ->
-			pp_ty_zako t;
-			print_string " list"
 let pp_ty ty = 
 	let tyvarenv = attr_tyvar ty in
 	let rec pp_ty = function 
@@ -133,6 +109,12 @@ let pp_ty ty =
 			pp_ty t;
 			print_string " list"
 	in pp_ty ty
+
+
+let pp_ty_zako = function
+
+	TyVar tyvar -> print_string ("'" ^ (string_of_int tyvar))
+|	t -> pp_ty t
 
 let rec print_subst = function
 	[] -> ()
@@ -280,31 +262,31 @@ and ty_decl tyenv = function
 	
 	
 and ty_rec_decl tyenv l = 
-	let rec f tyenv = function
+	let rec make_list tyenv = function
 		[] -> ([], [], tyenv)  
 	|	(id, e) :: rest -> 
 			let tyv = TyVar (fresh_tyvar ()) in
-			let (ids, tyl, retenv) = f tyenv rest in
+			let (ids, tyl, retenv) = make_list tyenv rest in
 			(id :: ids, tyv :: tyl , Environment.extend id (TyScheme ([], tyv)) retenv)
-	in let (ids, tyvarl, newenv) = f tyenv l in
+	in let (ids, tyvarl, newenv) = make_list tyenv l in
 	
-	let rec g  tyvarl l = 
+	let rec ty_all tyvarl l = 
 		match tyvarl,l with
 			[], [] -> ([], [])
 		|	v :: vrest, (id, e) :: rest ->
 				let (s,ty) = ty_exp newenv e in
-				let (reqs,rty) = g vrest rest in
+				let (reqs,rty) = ty_all vrest rest in
 				((v, ty) :: (eqs_of_subst s) @ reqs , ty :: rty)
-	in let (eqs,ty) = g tyvarl l in
+	in let (eqs,ty) = ty_all tyvarl l in
 	let s = unify eqs in
-	let rec h tyenv ids l =
+	let rec make_tyenv tyenv ids l =
 		match ids,l with
 		[], [] -> (tyenv, [])
 	|	id :: idrest, ty :: rest ->
-			let (retenv, t) = h tyenv idrest rest in
+			let (retenv, t) = make_tyenv tyenv idrest rest in
 			let ty_s = subst_type s ty in
 			((Environment.extend id (closure ty_s tyenv s) retenv), ty_s :: t)
-	in let (retenv, retty) = h tyenv ids ty in
+	in let (retenv, retty) = make_tyenv tyenv ids ty in
 	(retenv, (s,retty))
 
 
